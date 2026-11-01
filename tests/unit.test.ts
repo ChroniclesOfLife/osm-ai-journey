@@ -3,6 +3,7 @@ import test from 'node:test'
 import { DEFAULT_MAP_VIEWPORT, getInitialMapViewport } from '../src/components/mapViewport'
 import { deduplicatePlaces, searchLocalPlaces } from '../src/providers/localPlaceIndex'
 import { weatherLabel } from '../src/providers/weather'
+import { journeyJson, parseJourneyJson } from '../src/storage/journeyTransfer'
 import type { Place } from '../src/types/domain'
 
 const place = (id: string, name: string, category?: string): Place => ({ id, name, category, coordinates: [2.35, 48.85], source: 'map' })
@@ -27,4 +28,22 @@ test('weather codes map to readable condition labels', () => {
   assert.equal(weatherLabel(0), 'Clear sky')
   assert.equal(weatherLabel(61), 'Rain')
   assert.equal(weatherLabel(95), 'Thunderstorm')
+})
+
+test('journey export round-trips and rejects malformed data', () => {
+  const journey = {
+    id: 'active' as const,
+    currentDestination: place('current', 'Current'),
+    mapViewport: null,
+    destinationHistory: [place('current', 'Current')],
+    currentScene: 2,
+    messages: ['hello'],
+    knownPeople: ['Ada'],
+    knownEntities: [],
+    userFacts: ['A fact'],
+    narrativeEvents: [],
+    conversationSummary: '',
+  }
+  assert.deepEqual(parseJourneyJson(JSON.parse(journeyJson(journey))), JSON.parse(JSON.stringify(journey)))
+  assert.throws(() => parseJourneyJson({ id: 'wrong' }), /invalid id/)
 })

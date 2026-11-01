@@ -1,16 +1,13 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 const MapCanvas = lazy(() => import('./components/MapCanvas').then((module) => ({ default: module.MapCanvas })))
-import { enrichPlace, type PlaceContext } from './providers/enrichment'
-import { searchOnlinePlaces } from './providers/geocoder'
-import { buildJourneyContext, buildSummaryMessages } from './providers/context'
+import type { PlaceContext } from './providers/enrichment'
 import { LLM_PROVIDER_PRESETS } from './providers/config'
-import { completeChat, streamChat, testLlmConnection } from './providers/llm'
 import { searchLocalPlaces } from './providers/localPlaceIndex'
-import { calculateWalkingRoute } from './providers/routing'
 import { fetchCurrentWeather, weatherLabel, type WeatherResult } from './providers/weather'
 import { deleteActiveJourney, loadActiveJourney, saveActiveJourney } from './storage/journey'
 import { clearOfflineCache, getOfflineCacheStatus, type OfflineCacheStatus } from './storage/offlineCache'
 import { loadSettings, saveSettings } from './storage/settings'
+import { journeyJson, parseJourneyJson } from './storage/journeyTransfer'
 import type { JourneyState, MapViewport, NarrativeEvent, Place, UserSettings, WalkingRoute } from './types/domain'
 import './styles/app.css'
 
@@ -65,6 +62,9 @@ function App() {
   const [weatherState, setWeatherState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [weatherError, setWeatherError] = useState('')
   const [offlineStatus, setOfflineStatus] = useState<OfflineCacheStatus | null>(null)
+  const [journeyTransferMessage, setJourneyTransferMessage] = useState('')
+  const [journeyTransferError, setJourneyTransferError] = useState('')
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     saveSettings(settings)
@@ -113,7 +113,7 @@ function App() {
   useEffect(() => {
     if (!journeyReady || summaryState === 'loading' || messages.length < 12 || messages.length - summaryMessageCount < 8) return
     setSummaryState('loading')
-    void completeChat({ baseUrl: settings.llmBaseUrl, model: settings.llmModel, apiKey: settings.llmApiKey }, buildSummaryMessages(messages)).then((summary) => {
+    void import('./providers/context').then(({ buildSummaryMessages }) => import('./providers/llm').then(({ completeChat }) => completeChat({ baseUrl: settings.llmBaseUrl, model: settings.llmModel, apiKey: settings.llmApiKey }, buildSummaryMessages(messages)))).then((summary) => {
       setConversationSummary(summary)
       setSummaryMessageCount(messages.length)
       setSummaryState('idle')
@@ -137,7 +137,7 @@ function App() {
     setWeatherState('idle')
 
     setContextState('loading')
-    void enrichPlace(selectedPlace).then((response) => {
+    void import('./providers/enrichment').then(({ enrichPlace }) => enrichPlace(selectedPlace)).then((response) => {
       if (!active) return
       setPlaceContext(response.context)
       setContextCached(response.cached)
@@ -158,6 +158,7 @@ function App() {
     if (withRoute && origin) {
       setRouteState('loading')
       try {
+        const { calculateWalkingRoute } = await import('./providers/routing')
         walkingRoute = await calculateWalkingRoute(origin, place, { baseUrl: settings.routingBaseUrl })
         setRoute(walkingRoute)
         setRouteState('ready')
@@ -209,6 +210,7 @@ function App() {
     setOnlineState('loading')
     setOnlineError('')
     try {
+      const { searchOnlinePlaces } = await import('./providers/geocoder')
       const response = await searchOnlinePlaces(trimmed, settings.onlineGeocoder)
       setOnlineResults(response.places)
       setOnlineCached(response.cached)
@@ -243,16 +245,18 @@ function App() {
     setMessage('')
     setLlmState('loading')
     setLlmError('')
-    const chatMessages = buildJourneyContext({ settings, selectedPlace, messages, userMessage: trimmed, liveWeather: weather ? `${weatherLabel(weather.data.weatherCode)}, ${weather.data.temperatureC}°C, ${weather.source}` : undefined, journey: { destinationHistory, currentScene, knownPeople, knownEntities, userFacts, conversationSummary } })
     let assistantStarted = false
-    void streamChat({ baseUrl: settings.llmBaseUrl, model: settings.llmModel, apiKey: settings.llmApiKey }, chatMessages, (delta) => {
-      const firstDelta = !assistantStarted
-      assistantStarted = true
-      setMessages((current) => {
-        if (firstDelta) return [...current, delta]
-        const last = current[current.length - 1] ?? ''
-        return [...current.slice(0, -1), last + delta]
-      })
+    void import('./providers/context').then(({ buildJourneyContext }) => {
+      const chatMessages = buildJourneyContext({ settings, selectedPlace, messages, userMessage: trimmed, liveWeather: weather ? `${weatherLabel(weather.data.weatherCode)}, ${weather.data.temperatureC}°C, ${weather.source}` : undefined, journey: { destinationHistory, currentScene, knownPeople, knownEntities, userFacts, conversationSummary } })
+      return import('./providers/llm').then(({ streamChat }) => streamChat({ baseUrl: settings.llmBaseUrl, model: settings.llmModel, apiKey: settings.llmApiKey }, chatMessages, (delta) => {
+        const firstDelta = !assistantStarted
+        assistantStarted = true
+        setMessages((current) => {
+          if (firstDelta) return [...current, delta]
+          const last = current[current.length - 1] ?? ''
+          return [...current.slice(0, -1), last + delta]
+        })
+      }))
     }).then(() => {
       setLlmState('idle')
     }).catch((error) => {
@@ -265,6 +269,7 @@ function App() {
     setConnectionState('testing')
     setConnectionMessage('')
     try {
+      const { testLlmConnection } = await import('./providers/llm')
       await testLlmConnection({ baseUrl: settings.llmBaseUrl, model: settings.llmModel, apiKey: settings.llmApiKey })
       setConnectionState('ready')
       setConnectionMessage('Connection ready')
@@ -303,6 +308,51 @@ function App() {
     setRoute(null)
     setPendingDestination(null)
     setRouteState('idle')
+  }
+
+  function applyJourney(journey: JourneyState) {
+    setSelectedPlace(journey.currentDestination)
+    setMapViewport(journey.mapViewport ?? null)
+    setDestinationHistory(journey.destinationHistory)
+    setCurrentScene(journey.currentScene)
+    setMessages(journey.messages)
+    setNarrativeEvents(journey.narrativeEvents)
+    setKnownPeople(journey.knownPeople)
+    setKnownEntities(journey.knownEntities)
+    setUserFacts(journey.userFacts)
+    setConversationSummary(journey.conversationSummary ?? '')
+    setSummaryMessageCount(journey.messages.length)
+    setJourneyItem({ people: '', entities: '', facts: '' })
+    setRoute(null)
+    setPendingDestination(null)
+    setRouteState('idle')
+  }
+
+  function exportJourney() {
+    const blob = new Blob([journeyJson({ id: 'active', currentDestination: selectedPlace, mapViewport, destinationHistory, currentScene, messages, knownPeople, knownEntities, userFacts, narrativeEvents, conversationSummary })], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'osm-ai-journey.json'
+    link.click()
+    URL.revokeObjectURL(url)
+    setJourneyTransferError('')
+    setJourneyTransferMessage('Journey exported')
+  }
+
+  async function importJourney(file: File) {
+    try {
+      const imported = parseJourneyJson(JSON.parse(await file.text()))
+      if (!window.confirm('Replace the current journey with this imported journey?')) return
+      applyJourney(imported)
+      setJourneyTransferError('')
+      setJourneyTransferMessage('Journey imported')
+    } catch (error) {
+      setJourneyTransferMessage('')
+      setJourneyTransferError(error instanceof Error ? error.message : 'Journey import failed')
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = ''
+    }
   }
 
   async function deleteJourney() {
@@ -424,6 +474,12 @@ function App() {
           <div className="conversation">
             {messages.map((item, index) => <div className={`message ${index % 2 ? 'user-message' : 'ai-message'}`} key={`${item}-${index}`}><span className="message-label">{index % 2 ? 'You' : 'Guide'}</span><p>{item}</p></div>)}
           </div>
+          <section className="journey-timeline" aria-label="Journey timeline">
+            <div className="timeline-heading"><p className="memory-label">Journey timeline</p><span>{narrativeEvents.length} event{narrativeEvents.length === 1 ? '' : 's'}</span></div>
+            {narrativeEvents.length === 0
+              ? <p className="timeline-empty">Arrivals and story beats will appear here.</p>
+              : <ol>{narrativeEvents.slice(-6).reverse().map((event) => <li key={event.id}><span className="timeline-dot" aria-hidden="true" /><div><strong>{event.type.replaceAll('-', ' ')}</strong><p>{event.text}</p><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString()}</time></div></li>)}</ol>}
+          </section>
           <form className="composer" onSubmit={sendMessage}>
             <textarea disabled={llmState === 'loading'} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={llmState === 'loading' ? 'The companion is thinking…' : 'Speak freely. Ask for a scene, a direction, or a different world.'} rows={2} />
             <button className="send-button" disabled={llmState === 'loading'} type="submit" aria-label="Send message">↗</button>
@@ -454,8 +510,16 @@ function App() {
           {(['people', 'entities', 'facts'] as const).map((kind) => {
             const values = kind === 'people' ? knownPeople : kind === 'entities' ? knownEntities : userFacts
             const label = kind === 'people' ? 'User-created people' : kind === 'entities' ? 'User-created entities' : 'User-created facts'
-            return <div className="memory-group" key={kind}><label>{label}<div className="memory-entry"><input value={journeyItem[kind]} onChange={(event) => setJourneyItem({ ...journeyItem, [kind]: event.target.value })} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addJourneyItem(kind) } }} placeholder={`Add ${label.toLowerCase()}`} /><button type="button" onClick={() => addJourneyItem(kind)}>Add</button></div></label>{values.length > 0 && <p className="memory-values">{values.join(' · ')}</p>}</div>
+            const remove = kind === 'people' ? setKnownPeople : kind === 'entities' ? setKnownEntities : setUserFacts
+            return <div className="memory-group" key={kind}><label>{label}<div className="memory-entry"><input value={journeyItem[kind]} onChange={(event) => setJourneyItem({ ...journeyItem, [kind]: event.target.value })} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addJourneyItem(kind) } }} placeholder={`Add ${label.toLowerCase()}`} /><button type="button" onClick={() => addJourneyItem(kind)}>Add</button></div></label>{values.length > 0 && <ul className="memory-values">{values.map((value) => <li key={value}><span>{value}</span><button type="button" onClick={() => remove((current) => current.filter((item) => item !== value))} aria-label={`Remove ${value}`}>×</button></li>)}</ul>}</div>
           })}
+        </div>
+        <div className="journey-transfer">
+          <p className="memory-label">Journey file</p>
+          <div className="settings-actions"><button type="button" onClick={exportJourney}>Export JSON</button><button type="button" onClick={() => importInputRef.current?.click()}>Import JSON</button></div>
+          <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void importJourney(file) }} />
+          {journeyTransferMessage && <p className="connection-ready">{journeyTransferMessage}</p>}
+          {journeyTransferError && <p className="connection-error">{journeyTransferError}</p>}
         </div>
         <div className="settings-actions"><button onClick={resetJourney}>Reset journey</button><button onClick={() => void deleteJourney()}>Delete saved journey</button></div>
         <p className="settings-note">Settings stay in this browser. API keys are not safe to share in a public static deployment.</p>
