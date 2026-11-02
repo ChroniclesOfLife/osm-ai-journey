@@ -15,6 +15,7 @@ Provider adapters
   -> local tile-derived place index
   -> optional geocoder
   -> Wikipedia / Wikidata
+  -> Wikimedia Commons destination photos and post metadata
   -> optional live data
   -> optional walking router
   -> OpenAI-compatible or local LLM
@@ -28,6 +29,7 @@ External services must be behind small interfaces. The UI should not know whethe
 - `LocalPlaceIndex`: searchable features extracted from loaded vector tiles.
 - `GeocoderProvider`: explicit online search only.
 - `EnrichmentProvider`: Wikipedia/Wikidata destination context.
+- `ImageProvider`: illustrative destination images plus source post metadata.
 - `LiveDataProvider`: optional weather, hours, events, or transport data.
 - `RoutingProvider`: optional walking route calculation.
 - `LLMProvider`: streaming chat using an OpenAI-compatible request shape.
@@ -46,6 +48,8 @@ MapLibre uses OpenFreeMap's public vector style initially. OpenFreeMap is replac
 
 The current scaffold includes a small storage boundary; full journey persistence can be added without coupling components to browser APIs.
 
+Destination photos are illustrative only. Photo titles, captions, authors, dates, and source links are passed to the language model as source-backed metadata; image pixels are not sent to the model.
+
 ## Journey state
 
 Journey state is intentionally soft. It coordinates map and narrative consistency without preventing free-form roleplay.
@@ -57,6 +61,7 @@ Journey state is intentionally soft. It coordinates map and narrative consistenc
 - Known people and entities
 - User-created facts
 - Source-backed destination context
+- Illustrative destination photos and their written source metadata
 - Narrative events and conversation summary
 - Suggested actions, which are never required
 

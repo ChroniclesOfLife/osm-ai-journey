@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DEFAULT_MAP_VIEWPORT, getInitialMapViewport } from '../src/components/mapViewport'
 import { deduplicatePlaces, searchLocalPlaces } from '../src/providers/localPlaceIndex'
+import { buildJourneyContext } from '../src/providers/context'
 import { weatherLabel } from '../src/providers/weather'
 import { journeyJson, parseJourneyJson } from '../src/storage/journeyTransfer'
 import type { Place } from '../src/types/domain'
@@ -28,6 +29,40 @@ test('weather codes map to readable condition labels', () => {
   assert.equal(weatherLabel(0), 'Clear sky')
   assert.equal(weatherLabel(61), 'Rain')
   assert.equal(weatherLabel(95), 'Thunderstorm')
+})
+
+test('photo metadata is included as untrusted text context without image content', () => {
+  const messages = buildJourneyContext({
+    settings: {
+      llmProvider: 'ollama',
+      llmBaseUrl: 'http://localhost:11434/v1',
+      llmModel: 'test',
+      llmApiKey: '',
+      personaName: 'Guide',
+      personaInstructions: '',
+      onlineGeocoder: 'nominatim',
+      calculateWalkingRoutes: false,
+      routingBaseUrl: 'https://router.project-osrm.org',
+      liveDataEnabled: false,
+      weatherBaseUrl: 'https://api.open-meteo.com/v1/forecast',
+    },
+    selectedPlace: place('place', 'Test Place'),
+    journey: { destinationHistory: [], currentScene: 1, knownPeople: [], knownEntities: [], userFacts: [], conversationSummary: '' },
+    messages: ['starter'],
+    userMessage: 'What is this place like?',
+    destinationPhotos: [{
+      id: '1',
+      title: 'Town square',
+      description: 'A market beside the old hall.',
+      imageUrl: 'https://example.test/full.jpg',
+      thumbnailUrl: 'https://example.test/thumb.jpg',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Town_square.jpg',
+      source: 'wikimedia-commons',
+    }],
+  })
+  assert.match(messages[0].content, /Town square/)
+  assert.match(messages[0].content, /untrusted text/)
+  assert.doesNotMatch(messages[0].content, /full\.jpg/)
 })
 
 test('journey export round-trips and rejects malformed data', () => {
