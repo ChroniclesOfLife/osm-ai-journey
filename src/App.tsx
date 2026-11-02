@@ -8,7 +8,7 @@ import { deleteActiveJourney, loadActiveJourney, saveActiveJourney } from './sto
 import { clearOfflineCache, getOfflineCacheStatus, type OfflineCacheStatus } from './storage/offlineCache'
 import { loadSettings, saveSettings } from './storage/settings'
 import { journeyJson, parseJourneyJson } from './storage/journeyTransfer'
-import type { JourneyState, MapViewport, NarrativeEvent, Place, UserSettings, WalkingRoute } from './types/domain'
+import type { JourneyState, MapViewport, NarrativeEvent, Place, PlacePhoto, UserSettings, WalkingRoute } from './types/domain'
 import './styles/app.css'
 
 const starterMessage = 'Choose a place on the map, or tell me what kind of journey you want to begin.'
@@ -39,6 +39,9 @@ function App() {
   const [placeContext, setPlaceContext] = useState<PlaceContext | null>(null)
   const [contextState, setContextState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [contextCached, setContextCached] = useState(false)
+  const [destinationPhotos, setDestinationPhotos] = useState<PlacePhoto[]>([])
+  const [photosState, setPhotosState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [photosCached, setPhotosCached] = useState(false)
   const [destinationHistory, setDestinationHistory] = useState<Place[]>([])
   const [currentScene, setCurrentScene] = useState(1)
   const [narrativeEvents, setNarrativeEvents] = useState<NarrativeEvent[]>([])
@@ -130,11 +133,23 @@ function App() {
       setContextState('idle')
       setWeather(null)
       setWeatherState('idle')
+      setDestinationPhotos([])
+      setPhotosState('idle')
       return () => { active = false }
     }
 
     setWeather(null)
     setWeatherState('idle')
+    setDestinationPhotos([])
+    setPhotosState('loading')
+    void import('./providers/photos').then(({ fetchPlacePhotos }) => fetchPlacePhotos(selectedPlace)).then((response) => {
+      if (!active) return
+      setDestinationPhotos(response.photos)
+      setPhotosCached(response.cached)
+      setPhotosState('ready')
+    }).catch(() => {
+      if (active) setPhotosState('error')
+    })
 
     setContextState('loading')
     void import('./providers/enrichment').then(({ enrichPlace }) => enrichPlace(selectedPlace)).then((response) => {
@@ -247,7 +262,7 @@ function App() {
     setLlmError('')
     let assistantStarted = false
     void import('./providers/context').then(({ buildJourneyContext }) => {
-      const chatMessages = buildJourneyContext({ settings, selectedPlace, messages, userMessage: trimmed, liveWeather: weather ? `${weatherLabel(weather.data.weatherCode)}, ${weather.data.temperatureC}°C, ${weather.source}` : undefined, journey: { destinationHistory, currentScene, knownPeople, knownEntities, userFacts, conversationSummary } })
+      const chatMessages = buildJourneyContext({ settings, selectedPlace, messages, userMessage: trimmed, liveWeather: weather ? `${weatherLabel(weather.data.weatherCode)}, ${weather.data.temperatureC}°C, ${weather.source}` : undefined, destinationPhotos, journey: { destinationHistory, currentScene, knownPeople, knownEntities, userFacts, conversationSummary } })
       return import('./providers/llm').then(({ streamChat }) => streamChat({ baseUrl: settings.llmBaseUrl, model: settings.llmModel, apiKey: settings.llmApiKey }, chatMessages, (delta) => {
         const firstDelta = !assistantStarted
         assistantStarted = true
@@ -459,6 +474,14 @@ function App() {
               </div>
               {!placeContext.summary && placeContext.facts.length === 0 && <p className="context-state">No source context found for this place.</p>}
             </div>}
+            <div className="place-photos">
+              <div className="weather-heading"><p className="context-label">Illustrative photos</p>{photosCached && <span className="weather-source weather-cached">cached</span>}</div>
+              {photosState === 'loading' && <p className="context-state">Finding nearby Wikimedia Commons photos…</p>}
+              {photosState === 'error' && <p className="context-state">Photos are unavailable for this destination.</p>}
+              {photosState === 'ready' && destinationPhotos.length === 0 && <p className="context-state">No nearby photos found.</p>}
+              {destinationPhotos.length > 0 && <div className="photo-grid">{destinationPhotos.map((photo) => <a key={photo.id} href={photo.sourceUrl} target="_blank" rel="noreferrer"><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><span>{photo.title}</span></a>)}</div>}
+              {destinationPhotos.length > 0 && <p className="photo-note">Images are for illustration. Photo titles, captions, and source metadata may inform the companion.</p>}
+            </div>
           </aside>}
           <div className="map-caption"><span>Map data © OpenStreetMap contributors</span><span>OpenFreeMap</span></div>
         </section>

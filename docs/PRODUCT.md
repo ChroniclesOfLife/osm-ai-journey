@@ -9,10 +9,11 @@ Osm AI Journey turns map exploration into an open-ended narrative journey. A use
 1. The user opens a responsive map and chat workspace.
 2. They click a visible place or search locally within loaded map data.
 3. The app shows OSM-derived place information and optional Wikipedia/Wikidata context.
-4. The user creates or selects a persona and starts a scene.
-5. The AI maintains the current place, scene, people, and journey history while allowing normal conversation.
-6. The user can move to another destination, with or without calculating a walking route.
-7. The map and narrative update together, but user intent always wins over suggested actions.
+4. The destination panel can show nearby illustrative photos; their written post metadata may be used as AI context.
+5. The user creates or selects a persona and starts a scene.
+6. The AI maintains the current place, scene, people, and journey history while allowing normal conversation.
+7. The user can move to another destination, with or without calculating a walking route.
+8. The map and narrative update together, but user intent always wins over suggested actions.
 
 ## Interaction rules
 
@@ -36,6 +37,7 @@ Osm AI Journey turns map exploration into an open-ended narrative journey. A use
 ## Data boundaries
 
 The UI must distinguish between source-backed facts, cached facts, current live data, and user-created narrative details. The model should not present cached or static information as live information.
+Photo pixels are illustrative only. Photo titles, captions, authors, dates, and source links are source-backed metadata that may inform the AI.
 
 ## Later opportunities
 

@@ -23,6 +23,18 @@ export type Place = {
   source: 'map' | 'online'
 }
 
+export type PlacePhoto = {
+  id: string
+  title: string
+  description?: string
+  author?: string
+  publishedAt?: string
+  imageUrl: string
+  thumbnailUrl: string
+  sourceUrl: string
+  source: 'wikimedia-commons'
+}
+
 export type UserSettings = {
   llmProvider: 'ollama' | 'openai' | 'lmstudio' | 'vllm' | 'custom'
   llmBaseUrl: string
