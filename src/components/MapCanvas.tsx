@@ -24,7 +24,6 @@ export const MapCanvas = memo(function MapCanvas({ onPlaceSelected, onPlacesLoad
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markerRef = useRef<Marker | null>(null)
-  const previousSelectedPlaceIdRef = useRef(selectedPlace?.id ?? null)
   const onPlaceSelectedRef = useRef(onPlaceSelected)
   const onPlacesLoadedRef = useRef(onPlacesLoaded)
   const onMapStatusChangeRef = useRef(onMapStatusChange)
@@ -86,7 +85,7 @@ export const MapCanvas = memo(function MapCanvas({ onPlaceSelected, onPlacesLoad
       saveViewport()
       collectLoadedPlaces()
     })
-    map.on('moveend', saveViewport)
+    map.on('move', saveViewport)
     map.on('idle', collectLoadedPlaces)
     map.on('click', handleClick)
     map.on('error', () => {
@@ -101,8 +100,6 @@ export const MapCanvas = memo(function MapCanvas({ onPlaceSelected, onPlacesLoad
   }, [])
 
   useEffect(() => {
-    const previousSelectedPlaceId = previousSelectedPlaceIdRef.current
-    previousSelectedPlaceIdRef.current = selectedPlace?.id ?? null
     const map = mapRef.current
     if (!map) return
 
@@ -118,12 +115,10 @@ export const MapCanvas = memo(function MapCanvas({ onPlaceSelected, onPlacesLoad
       .addTo(map)
 
     const focusSelectedPlace = () => {
-      if (previousSelectedPlaceId === selectedPlace.id) return
-      map.flyTo({ center: selectedPlace.coordinates, zoom: Math.max(map.getZoom(), 14), essential: true })
+      map.jumpTo({ center: selectedPlace.coordinates, zoom: Math.max(map.getZoom(), 14) })
     }
 
-    if (map.isStyleLoaded()) focusSelectedPlace()
-    else map.once('load', focusSelectedPlace)
+    focusSelectedPlace()
 
     return () => { map.off('load', focusSelectedPlace) }
   }, [selectedPlace])
