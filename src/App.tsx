@@ -42,6 +42,7 @@ function App() {
   const [destinationPhotos, setDestinationPhotos] = useState<PlacePhoto[]>([])
   const [photosState, setPhotosState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [photosCached, setPhotosCached] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<PlacePhoto | null>(null)
   const [destinationHistory, setDestinationHistory] = useState<Place[]>([])
   const [currentScene, setCurrentScene] = useState(1)
   const [narrativeEvents, setNarrativeEvents] = useState<NarrativeEvent[]>([])
@@ -72,6 +73,15 @@ function App() {
   useEffect(() => {
     saveSettings(settings)
   }, [settings])
+
+  useEffect(() => {
+    if (!selectedPhoto) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedPhoto(null)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [selectedPhoto])
 
   useEffect(() => {
     if (!showSettings) return
@@ -135,6 +145,7 @@ function App() {
       setWeatherState('idle')
       setDestinationPhotos([])
       setPhotosState('idle')
+      setSelectedPhoto(null)
       return () => { active = false }
     }
 
@@ -142,6 +153,7 @@ function App() {
     setWeatherState('idle')
     setDestinationPhotos([])
     setPhotosState('loading')
+    setSelectedPhoto(null)
     void import('./providers/photos').then(({ fetchPlacePhotos }) => fetchPlacePhotos(selectedPlace)).then((response) => {
       if (!active) return
       setDestinationPhotos(response.photos)
@@ -479,7 +491,7 @@ function App() {
               {photosState === 'loading' && <p className="context-state">Finding nearby Wikimedia Commons photos…</p>}
               {photosState === 'error' && <p className="context-state">Photos are unavailable for this destination.</p>}
               {photosState === 'ready' && destinationPhotos.length === 0 && <p className="context-state">No nearby photos found.</p>}
-              {destinationPhotos.length > 0 && <div className="photo-grid">{destinationPhotos.map((photo) => <a key={photo.id} href={photo.sourceUrl} target="_blank" rel="noreferrer"><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><span>{photo.title}</span></a>)}</div>}
+              {destinationPhotos.length > 0 && <div className="photo-grid">{destinationPhotos.map((photo) => <button key={photo.id} className="photo-tile" type="button" onClick={() => setSelectedPhoto(photo)}><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><span>{photo.title}</span></button>)}</div>}
               {destinationPhotos.length > 0 && <p className="photo-note">Images are for illustration. Photo titles, captions, and source metadata may inform the companion.</p>}
             </div>
           </aside>}
@@ -511,6 +523,26 @@ function App() {
           <div className="journey-footer"><span>{selectedPlace ? `At ${selectedPlace.name}` : 'No destination selected'}</span><span>{destinationHistory.length} destination{destinationHistory.length === 1 ? '' : 's'} · {settings.calculateWalkingRoutes ? 'Walking routes on' : 'Routes optional'}</span></div>
         </section>
       </section>
+
+      {selectedPhoto && <div className="photo-modal-backdrop" role="presentation" onClick={() => setSelectedPhoto(null)}>
+        <section className="photo-modal" role="dialog" aria-modal="true" aria-labelledby="photo-modal-title" onClick={(event) => event.stopPropagation()}>
+          <div className="photo-modal-header">
+            <div><p className="eyebrow">Illustrative destination photo</p><h2 id="photo-modal-title">{selectedPhoto.title}</h2></div>
+            <button className="close-button" type="button" onClick={() => setSelectedPhoto(null)} aria-label="Close photo details">×</button>
+          </div>
+          <img className="photo-modal-image" src={selectedPhoto.imageUrl} alt={selectedPhoto.title} />
+          <div className="photo-modal-details">
+            {selectedPhoto.description && <p>{selectedPhoto.description}</p>}
+            <dl className="photo-metadata">
+              {selectedPhoto.author && <div><dt>Author</dt><dd>{selectedPhoto.author}</dd></div>}
+              {selectedPhoto.publishedAt && <div><dt>Date</dt><dd>{selectedPhoto.publishedAt}</dd></div>}
+              <div><dt>Source</dt><dd>Wikimedia Commons</dd></div>
+            </dl>
+            <p className="photo-note">The image is for illustration. Written metadata may inform the companion; the image itself is not sent to the AI.</p>
+            <a className="photo-source-link" href={selectedPhoto.sourceUrl} target="_blank" rel="noreferrer">View original and attribution ↗</a>
+          </div>
+        </section>
+      </div>}
 
       {showSettings && <aside className="settings panel">
         <div className="settings-header"><div><p className="eyebrow">Local configuration</p><h2>Journey settings</h2></div><button className="close-button" onClick={() => setShowSettings(false)}>×</button></div>
