@@ -81,11 +81,12 @@ export async function fetchPlacePhotos(place: Place, force = false): Promise<{ p
     if (!page.pageid || !page.title || !info?.thumburl || !info.url || !info.descriptionurl) return []
     const metadata = info.extmetadata
     
-    // Calculate distance if coordinates are available
+    // Calculate distance and extract coordinates if available
     let distanceMeters: number | undefined
+    let photoCoordinates: [number, number] | undefined
     if (page.coordinates && page.coordinates.length > 0) {
-      const photoCoords: [number, number] = [page.coordinates[0].lon, page.coordinates[0].lat]
-      distanceMeters = calculateDistance(place.coordinates, photoCoords)
+      photoCoordinates = [page.coordinates[0].lon, page.coordinates[0].lat]
+      distanceMeters = calculateDistance(place.coordinates, photoCoordinates)
     }
     
     return [{
@@ -99,6 +100,7 @@ export async function fetchPlacePhotos(place: Place, force = false): Promise<{ p
       sourceUrl: info.descriptionurl,
       source: 'wikimedia-commons',
       distanceMeters,
+      photoCoordinates,
     }]
   })
   await writeCachedValue(key, photos, Date.now() + CACHE_TTL)

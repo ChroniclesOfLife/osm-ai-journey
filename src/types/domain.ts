@@ -34,6 +34,7 @@ export type PlacePhoto = {
   sourceUrl: string
   source: 'wikimedia-commons'
   distanceMeters?: number
+  photoCoordinates?: Coordinates
 }
 
 export type UserSettings = {

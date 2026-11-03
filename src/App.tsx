@@ -21,13 +21,14 @@ function emptyJourney(): JourneyState {
   return { id: 'active', currentDestination: null, mapViewport: null, destinationHistory: [], currentScene: 1, messages: [starterMessage], knownPeople: [], knownEntities: [], userFacts: [], narrativeEvents: [], conversationSummary: '' }
 }
 
-function photoToPlace(photo: PlacePhoto): Place {
+function photoToPlace(photo: PlacePhoto, fallback: Place): Place {
   // Convert photo to a temporary Place for map display
+  // Use photo's actual coordinates if available, otherwise use destination as fallback
   return {
     id: `photo-${photo.id}`,
     name: photo.title,
     category: 'Photo Location',
-    coordinates: [2.2945, 48.8584], // Default coordinates (will be overridden if we have photo coords)
+    coordinates: photo.photoCoordinates || fallback.coordinates,
     source: 'map',
   }
 }
@@ -450,7 +451,7 @@ function App() {
           {query && onlineQuery === query.trim() && onlineState === 'ready' && onlineResults.length === 0 && <div className="online-search">No online places matched. <button onClick={() => void searchOnline()}>Try another search</button></div>}
           {query && mapStatus === 'unavailable' && <div className="search-state">Loaded map data is unavailable. <button onClick={() => void searchOnline()}>Search online</button></div>}
           {journeyReady
-            ? <Suspense fallback={<div className="map-loading">Loading map…</div>}><MapCanvas selectedPlace={selectedPhoto ? photoToPlace(selectedPhoto) : selectedPlace} initialViewport={mapViewport} onViewportChange={setMapViewport} route={route} onPlaceSelected={choosePlace} onPlacesLoaded={setPlaces} onMapStatusChange={setMapStatus} /></Suspense>
+            ? <Suspense fallback={<div className="map-loading">Loading map…</div>}><MapCanvas selectedPlace={selectedPhoto && selectedPlace ? photoToPlace(selectedPhoto, selectedPlace) : selectedPlace} initialViewport={mapViewport} onViewportChange={setMapViewport} route={route} onPlaceSelected={choosePlace} onPlacesLoaded={setPlaces} onMapStatusChange={setMapStatus} /></Suspense>
             : <div className="map-loading">Restoring journey…</div>}
           {pendingDestination && <div className="route-choice"><p className="eyebrow">Begin transition</p><strong>Walk from {selectedPlace?.name} to {pendingDestination.name}?</strong><p>Calculate an optional walking route before arriving.</p><div><button onClick={() => void completeTransition(pendingDestination, true)}>Walk there</button><button onClick={() => void completeTransition(pendingDestination, false)}>Arrive without route</button></div></div>}
           {routeState === 'loading' && <div className="route-status">Calculating walking route…</div>}
@@ -522,7 +523,7 @@ function App() {
           {selectedPhoto && <div className="photo-preview-panel">
             <div className="photo-preview-header">
               <span className="preview-label">Photo selected for discussion</span>
-              <button type="button" className="close-button" onClick={() => setSelectedPhoto(null)} aria-label="Close photo selection">×</button>
+              <button type="button" className="close-button" onClick={() => setSelectedPhoto(null)} aria-label="Close photo selection and return to destination">×</button>
             </div>
             <div className="photo-preview-content">
               <img src={selectedPhoto.thumbnailUrl} alt={selectedPhoto.title} />
@@ -534,6 +535,7 @@ function App() {
                 <a href={selectedPhoto.sourceUrl} target="_blank" rel="noreferrer" className="photo-preview-link">View on Wikimedia</a>
               </div>
             </div>
+            <p className="photo-preview-hint">Close with × to return to destination</p>
           </div>}
           <form className="composer" onSubmit={sendMessage}>
             <textarea disabled={llmState === 'loading'} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={llmState === 'loading' ? 'The companion is thinking…' : 'Speak freely. Ask for a scene, a direction, or a different world.'} rows={2} />
