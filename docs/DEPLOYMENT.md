@@ -19,3 +19,40 @@ Live weather is opt-in and only requested after enabling live data and asking fo
 ## Map caching limits
 
 The service worker caches resources requested by the normal map viewport. It does not download arbitrary areas in bulk. OpenFreeMap and its upstream data providers have usage and storage limits; bounded area downloads should be evaluated before adding a bulk-download feature. PMTiles remains the stronger option for intentionally packaged offline regions.
+
+## Branch preview deployments
+
+Cloudflare Workers Builds deploys this app. Pushes to a non-production branch upload a version with a stable alias URL. The version is not promoted, so production traffic does not change. The version command in the Cloudflare build settings is:
+
+```sh
+npx wrangler versions upload --preview-alias "$(echo "$WORKERS_CI_BRANCH" | tr '[:upper:]/_.' '[:lower:]---')"
+```
+
+The alias is the branch name in lowercase, with `/`, `_`, and `.` replaced by `-`. Alias labels are limited to 63 characters.
+
+Live testing URL for `feat/photo-detail-view`:
+
+https://feat-photo-detail-view-osm-ai-journey.mrdinh.workers.dev/
+
+The alias follows the latest upload for that branch. Each upload also gets its own version URL, which takes the form `https://<version-id>-osm-ai-journey.mrdinh.workers.dev`. Preview URLs are public and are not protected by authentication. Aliases are not isolated per branch, so bindings and secrets are shared with production.
+
+To promote a version to production, run `npx wrangler versions deploy` manually.
+
+### Naming convention for test branches
+
+Every test branch is deployed under its sanitized name, so the URL can be predicted before the build runs:
+
+| Branch | Preview URL |
+|---|---|
+| `feat/photo-detail-view` | `https://feat-photo-detail-view-osm-ai-journey.mrdinh.workers.dev/` |
+| `<type>/<topic>` | `https://<type>-<topic>-osm-ai-journey.mrdinh.workers.dev/` |
+
+Rule: lowercase the branch name, then replace `/`, `_`, and `.` with `-`. Keep the result under 63 characters.
+
+### Checklist for a new test branch
+
+1. Push the branch to `origin`. Cloudflare builds non-production branches automatically, as configured under **Settings → Builds → Branch control**.
+2. Confirm the Cloudflare build's version command matches the one above. It lives in the dashboard, not in this repository. Changing it in the repo has no effect.
+3. Confirm the Worker name in `wrangler.jsonc` (`osm-ai-journey`) matches the Worker in Cloudflare. A mismatch uploads to a different Worker, and the alias will not resolve.
+4. After the build, the log prints `Version Preview Alias URL`. Check that the URL matches the table above.
+5. Check the alias serves the new build. The page should reference the `assets/index-<hash>.js` that the build log prints.

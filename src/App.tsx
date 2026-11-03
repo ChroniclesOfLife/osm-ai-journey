@@ -141,6 +141,7 @@ function App() {
 
   useEffect(() => {
     let active = true
+    setSelectedPhoto(null)
     if (!selectedPlace) {
       setPlaceContext(null)
       setContextState('idle')
@@ -177,6 +178,11 @@ function App() {
   }, [selectedPlace])
 
   const localResults = useMemo(() => searchLocalPlaces(places, query), [places, query])
+  // Stable identity: MapCanvas re-centers whenever this object changes, so it must not be recreated on every render.
+  const mapPlace = useMemo(
+    () => (selectedPhoto && selectedPlace ? photoToPlace(selectedPhoto, selectedPlace) : selectedPlace),
+    [selectedPhoto, selectedPlace],
+  )
 
   async function completeTransition(place: Place, withRoute: boolean) {
     const origin = selectedPlace
@@ -287,7 +293,6 @@ function App() {
       }))
     }).then(() => {
       setLlmState('idle')
-      setSelectedPhoto(null)
     }).catch((error) => {
       setLlmState('error')
       setLlmError(error instanceof Error ? error.message : 'The language model request failed')
@@ -451,13 +456,28 @@ function App() {
           {query && onlineQuery === query.trim() && onlineState === 'ready' && onlineResults.length === 0 && <div className="online-search">No online places matched. <button onClick={() => void searchOnline()}>Try another search</button></div>}
           {query && mapStatus === 'unavailable' && <div className="search-state">Loaded map data is unavailable. <button onClick={() => void searchOnline()}>Search online</button></div>}
           {journeyReady
-            ? <Suspense fallback={<div className="map-loading">Loading map…</div>}><MapCanvas selectedPlace={selectedPhoto && selectedPlace ? photoToPlace(selectedPhoto, selectedPlace) : selectedPlace} initialViewport={mapViewport} onViewportChange={setMapViewport} route={route} onPlaceSelected={choosePlace} onPlacesLoaded={setPlaces} onMapStatusChange={setMapStatus} /></Suspense>
+            ? <Suspense fallback={<div className="map-loading">Loading map…</div>}><MapCanvas selectedPlace={mapPlace} initialViewport={mapViewport} onViewportChange={setMapViewport} route={route} onPlaceSelected={choosePlace} onPlacesLoaded={setPlaces} onMapStatusChange={setMapStatus} /></Suspense>
             : <div className="map-loading">Restoring journey…</div>}
           {pendingDestination && <div className="route-choice"><p className="eyebrow">Begin transition</p><strong>Walk from {selectedPlace?.name} to {pendingDestination.name}?</strong><p>Calculate an optional walking route before arriving.</p><div><button onClick={() => void completeTransition(pendingDestination, true)}>Walk there</button><button onClick={() => void completeTransition(pendingDestination, false)}>Arrive without route</button></div></div>}
           {routeState === 'loading' && <div className="route-status">Calculating walking route…</div>}
           {routeState === 'ready' && route && <div className="route-status">Walking route · {(route.distanceMeters / 1000).toFixed(1)} km · {Math.round(route.durationSeconds / 60)} min</div>}
           {routeState === 'error' && <div className="route-status route-error">{routeMessage} Continuing without a route.</div>}
-          {selectedPlace && <aside className="place-detail" aria-label="Selected destination">
+          {selectedPlace && selectedPhoto && <aside className="place-detail photo-detail" aria-label="Selected photo">
+            <button type="button" className="back-button" onClick={() => setSelectedPhoto(null)}>← Back to {selectedPlace.name}</button>
+            <img className="photo-detail-image" src={selectedPhoto.thumbnailUrl} alt={selectedPhoto.title} />
+            <p className="eyebrow">Photo</p>
+            <h3 className="photo-detail-title">{selectedPhoto.title}</h3>
+            <dl className="place-facts">
+              <div><dt>Distance</dt><dd>{selectedPhoto.distanceMeters === undefined ? 'Unknown' : selectedPhoto.distanceMeters < 50 ? 'At destination' : `${(selectedPhoto.distanceMeters / 1000).toFixed(1)} km away`}</dd></div>
+              <div><dt>Location</dt><dd>{selectedPhoto.photoCoordinates ? `${selectedPhoto.photoCoordinates[1].toFixed(5)}, ${selectedPhoto.photoCoordinates[0].toFixed(5)}` : 'No geotag'}</dd></div>
+              {selectedPhoto.author && <div><dt>Author</dt><dd>{selectedPhoto.author}</dd></div>}
+              {selectedPhoto.publishedAt && <div><dt>Date</dt><dd>{selectedPhoto.publishedAt}</dd></div>}
+            </dl>
+            {selectedPhoto.description && <p className="context-summary">{selectedPhoto.description}</p>}
+            <p className="photo-note">This photo is in the companion's context for your next message. Going back removes it.</p>
+            <div className="context-links"><a href={selectedPhoto.sourceUrl} target="_blank" rel="noreferrer">View on Wikimedia</a></div>
+          </aside>}
+          {selectedPlace && !selectedPhoto && <aside className="place-detail" aria-label="Selected destination">
             <div className="place-detail-header">
               <div><p className="eyebrow">Selected destination</p><h3>{selectedPlace.name}</h3></div>
               <button className="close-button" onClick={() => { setSelectedPlace(null); setRoute(null) }} aria-label="Clear selected destination">×</button>
@@ -495,7 +515,7 @@ function App() {
               {photosState === 'ready' && destinationPhotos.length === 0 && <p className="context-state">No nearby photos found.</p>}
               {destinationPhotos.length > 0 && <div className="photo-grid">{destinationPhotos.map((photo) => {
                 const distanceLabel = photo.distanceMeters === undefined ? '' : photo.distanceMeters < 50 ? 'At destination' : `${(photo.distanceMeters / 1000).toFixed(1)} km away`
-                return <button key={photo.id} onClick={() => setSelectedPhoto(photo)} className={`photo-card ${selectedPhoto?.id === photo.id ? 'selected' : ''}`}><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><div className="photo-info"><span className="photo-title">{photo.title}</span>{distanceLabel && <span className="photo-distance">{distanceLabel}</span>}</div>{selectedPhoto?.id === photo.id && <span className="selection-badge">✓</span>}</button>
+                return <button key={photo.id} onClick={() => setSelectedPhoto(photo)} className="photo-card"><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><div className="photo-info"><span className="photo-title">{photo.title}</span>{distanceLabel && <span className="photo-distance">{distanceLabel}</span>}</div></button>
               })}</div>}
               {destinationPhotos.length > 0 && <p className="photo-note">Photos within 1 km search radius. Images are for illustration. Photo titles, captions, and source metadata may inform the companion.</p>}
             </div>
@@ -520,23 +540,6 @@ function App() {
               ? <p className="timeline-empty">Arrivals and story beats will appear here.</p>
               : <ol>{narrativeEvents.slice(-6).reverse().map((event) => <li key={event.id}><span className="timeline-dot" aria-hidden="true" /><div><strong>{event.type.replaceAll('-', ' ')}</strong><p>{event.text}</p><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString()}</time></div></li>)}</ol>}
           </section>
-          {selectedPhoto && <div className="photo-preview-panel">
-            <div className="photo-preview-header">
-              <span className="preview-label">Photo selected for discussion</span>
-              <button type="button" className="close-button" onClick={() => setSelectedPhoto(null)} aria-label="Close photo selection and return to destination">×</button>
-            </div>
-            <div className="photo-preview-content">
-              <img src={selectedPhoto.thumbnailUrl} alt={selectedPhoto.title} />
-              <div className="photo-preview-info">
-                <p className="photo-preview-title">{selectedPhoto.title}</p>
-                {selectedPhoto.description && <p className="photo-preview-description">{selectedPhoto.description}</p>}
-                {selectedPhoto.author && <p className="photo-preview-author">By {selectedPhoto.author}</p>}
-                {selectedPhoto.distanceMeters !== undefined && <p className="photo-preview-distance">{selectedPhoto.distanceMeters < 50 ? 'At destination' : `${(selectedPhoto.distanceMeters / 1000).toFixed(1)} km away`}</p>}
-                <a href={selectedPhoto.sourceUrl} target="_blank" rel="noreferrer" className="photo-preview-link">View on Wikimedia</a>
-              </div>
-            </div>
-            <p className="photo-preview-hint">Close with × to return to destination</p>
-          </div>}
           <form className="composer" onSubmit={sendMessage}>
             <textarea disabled={llmState === 'loading'} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={llmState === 'loading' ? 'The companion is thinking…' : 'Speak freely. Ask for a scene, a direction, or a different world.'} rows={2} />
             <button className="send-button" disabled={llmState === 'loading'} type="submit" aria-label="Send message">↗</button>
