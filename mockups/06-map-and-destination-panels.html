@@ -1,0 +1,171 @@
+<!doctype html><html><head><meta charset=utf-8><style>
+:root{--ink:#f1f4ec;--soft:#cdd8ce;--faint:#9fb4a4;--acc:#c5e3a4;--accd:#9cbd83;--amber:#e3c48a;--glass:rgba(14,21,19,.64);--gs:rgba(11,17,15,.9);--box:rgba(10,15,14,.86);--hair:rgba(150,180,155,.26)}
+*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%}
+body{font-family:ui-sans-serif,system-ui,sans-serif;color:var(--ink);background:#09100e;overflow:hidden}
+button{font:inherit;cursor:pointer;color:inherit}
+.eyebrow{font:500 10px/1.2 ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.stage{position:fixed;inset:0;overflow:hidden}
+.map{position:absolute;inset:0;background:radial-gradient(circle at 30% 24%,rgba(76,120,96,.4),transparent 40%),radial-gradient(circle at 76% 70%,rgba(60,95,110,.4),transparent 44%),linear-gradient(135deg,#1a2e29,#152625 55%,#101f20);filter:blur(2px) brightness(.66)}
+.scene{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1525874684015-58379d421a52?w=1600&q=80');background-size:cover;background-position:center 38%;-webkit-mask-image:radial-gradient(130% 115% at 50% 40%,#000 55%,transparent 92%);mask-image:radial-gradient(130% 115% at 50% 40%,#000 55%,transparent 92%)}
+.scene:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,16,14,.6),transparent 30%,transparent 62%,rgba(9,16,14,.7)),linear-gradient(180deg,transparent 40%,rgba(9,16,14,.8) 82%)}
+/* two sprites, pushed back since panels are open */
+.sprite{position:absolute;bottom:160px;width:250px;height:440px;z-index:3;opacity:.5;border-radius:50% 50% 44% 44%/58% 58% 42% 42%;-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent 99%);mask-image:linear-gradient(180deg,#000 72%,transparent 99%);filter:saturate(.7)}
+.sprite.vendor{left:27%;background:linear-gradient(180deg,rgba(227,196,138,.14),rgba(90,70,40,.04))}
+.sprite.vendor:before{content:"";position:absolute;left:50%;top:44px;width:118px;height:118px;margin-left:-59px;border-radius:50%;background:radial-gradient(circle at 42% 38%,#efd8ab,#cdab6f 60%,#876b3f)}
+.sprite.vendor:after{content:"";position:absolute;left:50%;top:146px;width:176px;height:260px;margin-left:-88px;border-radius:40% 40% 0 0;background:linear-gradient(180deg,#5a4a30,#39301f)}
+.sprite.comp{right:30%;background:linear-gradient(180deg,rgba(197,227,164,.1),rgba(60,90,70,.03))}
+.sprite.comp:before{content:"";position:absolute;left:50%;top:44px;width:112px;height:112px;margin-left:-56px;border-radius:50%;background:radial-gradient(circle at 42% 38%,#cfe6ae,#9cbd83 60%,#5f7d52)}
+.sprite.comp:after{content:"";position:absolute;left:50%;top:144px;width:170px;height:256px;margin-left:-85px;border-radius:40% 40% 0 0;background:linear-gradient(180deg,#3c5a49,#243a30)}
+.top{position:absolute;z-index:20;top:20px;left:24px;right:24px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{display:grid;place-items:center;width:36px;height:36px;border:1px solid rgba(197,227,164,.5);border-radius:11px;color:var(--acc);font-size:18px;background:var(--glass);backdrop-filter:blur(10px)}
+.brand h1{font:600 15px/1 Georgia,serif}
+.ta{display:flex;align-items:center;gap:10px}
+.toggle{display:flex;padding:3px;border-radius:999px;border:1px solid var(--hair);background:var(--glass);backdrop-filter:blur(10px)}
+.toggle button{padding:7px 13px;border:0;border-radius:999px;background:transparent;font:500 10px ui-monospace,monospace;color:var(--faint);letter-spacing:.05em}
+.toggle .on{background:var(--acc);color:#132119}
+.gb{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border-radius:999px;border:1px solid var(--hair);background:var(--glass);backdrop-filter:blur(10px);color:var(--soft);font:11px ui-monospace,monospace}
+/* left dock with two active */
+.dock{position:absolute;z-index:19;left:20px;top:84px;display:flex;flex-direction:column;gap:9px}
+.dockbtn{display:flex;flex-direction:column;align-items:center;gap:4px;width:56px;padding:10px 4px;border-radius:13px;border:1px solid var(--hair);background:var(--glass);backdrop-filter:blur(12px);color:var(--soft)}
+.dockbtn .ic{font-size:16px}
+.dockbtn small{font:8px ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.dockbtn.active{border-color:var(--accd);background:rgba(197,227,164,.18);color:var(--acc)}
+.dockbtn.active small{color:var(--accd)}
+/* ===== MAP PANEL (open) — navigate between places ===== */
+.panel{position:absolute;z-index:18;top:84px;border-radius:16px;border:1px solid var(--hair);background:var(--gs);backdrop-filter:blur(24px);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.phead{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px}
+.phead h3{font:500 15px Georgia,serif}
+.phead .x{width:26px;height:26px;border-radius:8px;border:1px solid var(--hair);background:transparent;color:var(--soft);font-size:13px}
+.mappanel{left:88px;width:360px;overflow:hidden}
+.minimap{position:relative;height:260px;margin:0 14px;border-radius:12px;overflow:hidden;border:1px solid var(--hair);background:radial-gradient(circle at 36% 30%,rgba(76,120,96,.55),transparent 42%),radial-gradient(circle at 74% 72%,rgba(60,95,110,.5),transparent 46%),linear-gradient(135deg,#223a33,#17302d)}
+.minimap:before{content:"";position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(200,220,200,.06) 1px,transparent 1px),linear-gradient(0deg,rgba(200,220,200,.05) 1px,transparent 1px);background-size:40px 40px,40px 40px}
+.rt{position:absolute;left:24%;top:38%;width:40%;height:2px;background:repeating-linear-gradient(90deg,var(--accd) 0 7px,transparent 7px 13px);transform:rotate(20deg);opacity:.6}
+.mp{position:absolute;width:13px;height:13px;border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
+.mp.a{left:24%;top:38%;background:var(--accd);opacity:.7}.mp.b{left:52%;top:30%;background:var(--accd);opacity:.7}
+.mp.now{left:64%;top:58%;background:var(--acc);box-shadow:0 0 0 6px rgba(197,227,164,.16)}
+.mp.near{left:40%;top:72%;background:#7fa0b5;opacity:.85}
+.mapsearch{display:flex;align-items:center;gap:8px;margin:12px 14px 10px;padding:8px 12px;border-radius:10px;border:1px solid var(--hair);background:rgba(10,16,14,.5)}
+.mapsearch input{flex:1;border:0;outline:0;background:transparent;color:var(--ink);font-size:12px}
+.mapsearch input::placeholder{color:var(--faint)}
+.navlist{padding:0 14px 14px}
+.navlist .hd{margin:4px 0 8px}
+.navrow{display:flex;justify-content:space-between;align-items:center;width:100%;padding:9px 11px;margin-bottom:6px;border-radius:9px;border:1px solid var(--hair);background:rgba(197,227,164,.05);text-align:left}
+.navrow:hover{border-color:var(--accd)}
+.navrow .l{display:flex;flex-direction:column;gap:2px}
+.navrow strong{font:500 13px Georgia,serif}
+.navrow span{font:9px ui-monospace,monospace;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+.navrow .go{padding:5px 10px;border-radius:7px;border:1px solid var(--accd);background:rgba(197,227,164,.16);color:var(--acc);font:500 10px ui-sans-serif,system-ui}
+.navrow.here{border-color:var(--acc);background:rgba(197,227,164,.12)}
+.navrow.here .go{border:0;background:transparent;color:var(--accd);font:9px ui-monospace,monospace;text-transform:uppercase}
+/* ===== DESTINATION PANEL (open) — images + context ===== */
+.destpanel{right:70px;width:320px;max-height:calc(100% - 150px);overflow-y:auto}
+.hero{height:120px;margin:0 14px 12px;border-radius:12px;overflow:hidden;position:relative;border:1px solid var(--hair)}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero .tag{position:absolute;left:10px;bottom:8px;font:500 9px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#eef;text-shadow:0 1px 3px #000}
+.sect{margin:0 14px 14px;padding-top:12px;border-top:1px solid var(--hair)}
+.sect:first-of-type{border-top:0;padding-top:0}
+.prov{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:6px;font:9px ui-monospace,monospace;text-transform:uppercase}
+.ps{background:rgba(197,227,164,.16);color:var(--acc)}.pl{background:rgba(120,200,255,.16);color:#93cdf0}
+.ab{font-size:12px;line-height:1.6;color:var(--soft);margin-top:10px}
+.gal{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.gal button{position:relative;padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;background:none;cursor:pointer}
+.gal button.sel{border-color:var(--acc);box-shadow:0 0 10px rgba(197,227,164,.4)}
+.gal img{display:block;width:100%;aspect-ratio:1.25;object-fit:cover}
+.gal .cap{position:absolute;left:0;right:0;bottom:0;padding:3px 5px;font:8px ui-monospace,monospace;color:#eef;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent)}
+.galhint{margin-top:9px;font:9px ui-monospace,monospace;line-height:1.5;color:var(--faint)}
+.useimg{margin-top:10px;width:100%;padding:8px;border-radius:8px;border:1px solid var(--accd);background:rgba(197,227,164,.14);color:var(--acc);font:500 11px ui-sans-serif,system-ui}
+.wx{display:flex;align-items:baseline;gap:10px;margin-top:10px}
+.wx strong{font:500 22px Georgia,serif}.wx span{font:11px ui-monospace,monospace;color:var(--soft)}
+/* VN box, compacted to make room */
+.vn{position:absolute;z-index:16;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,calc(100% - 820px))}
+.nameplate{display:inline-flex;align-items:center;gap:10px;margin-left:8px;margin-bottom:-11px;position:relative;z-index:2;padding:8px 16px;border-radius:12px 12px 0 0;background:var(--acc);color:#132119;font:600 14px Georgia,serif}
+.nameplate .role{font:9px ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.box{padding:18px 20px 14px;border-radius:16px;border:1px solid var(--hair);background:var(--box);backdrop-filter:blur(16px);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.line{font:400 15px/1.66 Georgia,serif;color:#f3f7ee}
+.cur{display:inline-block;width:8px;margin-left:2px;background:var(--acc);animation:bl 1s steps(1) infinite;vertical-align:-1px}
+@keyframes bl{50%{opacity:0}}
+.ctrls{display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding-top:12px;border-top:1px solid var(--hair);gap:10px}
+.choices{display:flex;gap:7px;flex-wrap:wrap}
+.choices button{padding:7px 12px;border-radius:9px;border:1px solid var(--hair);background:rgba(197,227,164,.08);color:var(--soft);font:500 12px ui-sans-serif,system-ui}
+.choices .go{border-color:var(--accd);background:rgba(197,227,164,.16);color:var(--acc)}
+.free{padding:7px 13px;border-radius:9px;border:1px solid var(--hair);background:rgba(10,16,14,.5);color:var(--soft);font:500 12px ui-sans-serif,system-ui;white-space:nowrap}
+</style></head><body>
+<div class=stage>
+  <div class=map></div>
+  <div class=scene></div>
+
+  <div class="sprite vendor"></div>
+  <div class="sprite comp"></div>
+
+  <div class=top>
+    <div class=brand><div class=mark>&#10022;</div><div><div class=eyebrow>Your companion &middot; Aurelio</div><h1>Osm AI Journey</h1></div></div>
+    <div class=ta>
+      <div class=toggle><button>Explore</button><button class=on>Story</button></div>
+      <button class=gb><span>&#128100;</span> Illustration: on</button>
+      <button class=gb><span>&#9881;</span></button>
+    </div>
+  </div>
+
+  <!-- LEFT DOCK: Map + Place active, Journal available -->
+  <div class=dock>
+    <button class="dockbtn active"><span class=ic>&#128506;</span><small>Map</small></button>
+    <button class="dockbtn active"><span class=ic>&#127748;</span><small>Place</small></button>
+    <button class=dockbtn><span class=ic>&#9201;</span><small>Journal</small></button>
+  </div>
+
+  <!-- MAP PANEL -->
+  <aside class="panel mappanel">
+    <div class=phead><h3>Navigate</h3><button class=x>&times;</button></div>
+    <div class=minimap>
+      <span class="mp a"></span><span class="mp b"></span><div class=rt></div><span class="mp now"></span><span class="mp near"></span>
+    </div>
+    <div class=mapsearch><span>&#9906;</span><input placeholder="Search a place, or click the map&hellip;"><button class=go style="border:0;background:transparent;color:var(--accd);font:9px ui-monospace">ONLINE</button></div>
+    <div class=navlist>
+      <div class="eyebrow hd">Go to</div>
+      <button class="navrow here"><span class=l><strong>Trevi Fountain</strong><span>Scene 03 &middot; current</span></span><span class=go>You are here</span></button>
+      <button class=navrow><span class=l><strong>Spanish Steps</strong><span>450 m &middot; walkable</span></span><span class=go>Walk &rarr;</span></button>
+      <button class=navrow><span class=l><strong>Quirinal Palace</strong><span>loaded on map</span></span><span class=go>Travel</span></button>
+    </div>
+  </aside>
+
+  <!-- DESTINATION PANEL -->
+  <aside class="panel destpanel">
+    <div class=phead><h3>Trevi Fountain</h3><button class=x>&times;</button></div>
+    <div class=hero><img src="https://images.unsplash.com/photo-1525874684015-58379d421a52?w=640&q=75"><span class=tag>Hero &middot; illustrative</span></div>
+    <div class=sect>
+      <div class=eyebrow>About <span class="prov ps">source</span></div>
+      <p class=ab>Largest Baroque fountain in Rome, completed 1762. Designed by Nicola Salvi; completed by Giuseppe Pannini.</p>
+    </div>
+    <div class=sect>
+      <div class=eyebrow>Nearby photos &middot; swap the scene</div>
+      <div class=gal>
+        <button class=sel><img src="https://images.unsplash.com/photo-1525874684015-58379d421a52?w=240&q=70"><span class=cap>Facade</span></button>
+        <button><img src="https://images.unsplash.com/photo-1542820229-081e0c12af0b?w=240&q=70"><span class=cap>Neptune</span></button>
+        <button><img src="https://images.unsplash.com/photo-1555992828-ca4dbe41d294?w=240&q=70"><span class=cap>At night</span></button>
+        <button><img src="https://images.unsplash.com/photo-1491566102020-21838225c3c8?w=240&q=70"><span class=cap>Side street</span></button>
+      </div>
+      <p class=galhint>Tap a photo to set it as the scene background. Titles &amp; captions become context for Aurelio.</p>
+      <button class=useimg>Use &ldquo;Facade&rdquo; as the scene &amp; show Aurelio &rarr;</button>
+    </div>
+    <div class=sect>
+      <div class=eyebrow>Now <span class="prov pl">live</span></div>
+      <div class=wx><strong>14&deg;C</strong><span>Clear evening</span></div>
+    </div>
+  </aside>
+
+  <div class=vn>
+    <div class=nameplate>Aurelio <span class=role>companion</span></div>
+    <div class=box>
+      <p class=line>&ldquo;While you look &mdash; the night photo, there. The water glows green under the lamps. Shall we come back after dark, or press on to the Steps now?&rdquo;<span class=cur>&nbsp;</span></p>
+      <div class=ctrls>
+        <div class=choices>
+          <button>Stay for nightfall</button>
+          <button class=go>Walk to the Spanish Steps &rarr;</button>
+        </div>
+        <button class=free>Say something</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
