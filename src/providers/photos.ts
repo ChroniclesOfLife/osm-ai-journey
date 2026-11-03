@@ -26,7 +26,7 @@ type WikimediaResponse = {
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000
 
 function cacheKey(place: Place) {
-  return `photos:${place.name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim()}:${place.coordinates.map((coordinate) => coordinate.toFixed(3)).join(':')}`
+  return `photos:v2:${place.name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim()}:${place.coordinates.map((coordinate) => coordinate.toFixed(3)).join(':')}`
 }
 
 function cleanHtml(value?: string) {
