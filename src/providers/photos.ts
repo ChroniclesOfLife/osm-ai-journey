@@ -16,6 +16,7 @@ type WikimediaPage = {
     descriptionurl?: string
     extmetadata?: WikimediaMetadata
   }>
+  coordinates?: Array<{ lat: number; lon: number }>
 }
 
 type WikimediaResponse = {
@@ -31,6 +32,23 @@ function cacheKey(place: Place) {
 function cleanHtml(value?: string) {
   const cleaned = value?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
   return cleaned ? cleaned.slice(0, 500) : undefined
+}
+
+function calculateDistance(coord1: [number, number], coord2: [number, number]): number {
+  // Haversine formula to calculate distance between two coordinates (in meters)
+  const [lon1, lat1] = coord1
+  const [lon2, lat2] = coord2
+  const R = 6371000 // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
 }
 
 export async function fetchPlacePhotos(place: Place, force = false): Promise<{ photos: PlacePhoto[]; cached: boolean }> {
@@ -49,7 +67,7 @@ export async function fetchPlacePhotos(place: Place, force = false): Promise<{ p
     ggsradius: '1000',
     ggslimit: '8',
     ggscoord: `${latitude}|${longitude}`,
-    prop: 'imageinfo',
+    prop: 'imageinfo|coordinates',
     iiprop: 'url|extmetadata',
     iiurlwidth: '640',
     format: 'json',
@@ -62,6 +80,14 @@ export async function fetchPlacePhotos(place: Place, force = false): Promise<{ p
     const info = page.imageinfo?.[0]
     if (!page.pageid || !page.title || !info?.thumburl || !info.url || !info.descriptionurl) return []
     const metadata = info.extmetadata
+    
+    // Calculate distance if coordinates are available
+    let distanceMeters: number | undefined
+    if (page.coordinates && page.coordinates.length > 0) {
+      const photoCoords: [number, number] = [page.coordinates[0].lon, page.coordinates[0].lat]
+      distanceMeters = calculateDistance(place.coordinates, photoCoords)
+    }
+    
     return [{
       id: String(page.pageid),
       title: page.title.replace(/^File:/, ''),
@@ -72,6 +98,7 @@ export async function fetchPlacePhotos(place: Place, force = false): Promise<{ p
       thumbnailUrl: info.thumburl,
       sourceUrl: info.descriptionurl,
       source: 'wikimedia-commons',
+      distanceMeters,
     }]
   })
   await writeCachedValue(key, photos, Date.now() + CACHE_TTL)

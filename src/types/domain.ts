@@ -33,6 +33,7 @@ export type PlacePhoto = {
   thumbnailUrl: string
   sourceUrl: string
   source: 'wikimedia-commons'
+  distanceMeters?: number
 }
 
 export type UserSettings = {

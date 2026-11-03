@@ -479,8 +479,11 @@ function App() {
               {photosState === 'loading' && <p className="context-state">Finding nearby Wikimedia Commons photos…</p>}
               {photosState === 'error' && <p className="context-state">Photos are unavailable for this destination.</p>}
               {photosState === 'ready' && destinationPhotos.length === 0 && <p className="context-state">No nearby photos found.</p>}
-              {destinationPhotos.length > 0 && <div className="photo-grid">{destinationPhotos.map((photo) => <a key={photo.id} href={photo.sourceUrl} target="_blank" rel="noreferrer"><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><span>{photo.title}</span></a>)}</div>}
-              {destinationPhotos.length > 0 && <p className="photo-note">Images are for illustration. Photo titles, captions, and source metadata may inform the companion.</p>}
+              {destinationPhotos.length > 0 && <div className="photo-grid">{destinationPhotos.map((photo) => {
+                const distanceLabel = photo.distanceMeters === undefined ? '' : photo.distanceMeters < 50 ? 'At destination' : `${(photo.distanceMeters / 1000).toFixed(1)} km away`
+                return <a key={photo.id} href={photo.sourceUrl} target="_blank" rel="noreferrer"><img src={photo.thumbnailUrl} alt={photo.title} loading="lazy" /><div className="photo-info"><span className="photo-title">{photo.title}</span>{distanceLabel && <span className="photo-distance">{distanceLabel}</span>}</div></a>
+              })}</div>}
+              {destinationPhotos.length > 0 && <p className="photo-note">Photos within 1 km search radius. Images are for illustration. Photo titles, captions, and source metadata may inform the companion.</p>}
             </div>
           </aside>}
           <div className="map-caption"><span>Map data © OpenStreetMap contributors</span><span>OpenFreeMap</span></div>
