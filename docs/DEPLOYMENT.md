@@ -37,3 +37,22 @@ https://feat-photo-detail-view-osm-ai-journey.mrdinh.workers.dev/
 The alias follows the latest upload for that branch. Each upload also gets its own version URL, which takes the form `https://<version-id>-osm-ai-journey.mrdinh.workers.dev`. Preview URLs are public and are not protected by authentication. Aliases are not isolated per branch, so bindings and secrets are shared with production.
 
 To promote a version to production, run `npx wrangler versions deploy` manually.
+
+### Naming convention for test branches
+
+Every test branch is deployed under its sanitized name, so the URL can be predicted before the build runs:
+
+| Branch | Preview URL |
+|---|---|
+| `feat/photo-detail-view` | `https://feat-photo-detail-view-osm-ai-journey.mrdinh.workers.dev/` |
+| `<type>/<topic>` | `https://<type>-<topic>-osm-ai-journey.mrdinh.workers.dev/` |
+
+Rule: lowercase the branch name, then replace `/`, `_`, and `.` with `-`. Keep the result under 63 characters.
+
+### Checklist for a new test branch
+
+1. Push the branch to `origin`. Cloudflare builds non-production branches automatically, as configured under **Settings → Builds → Branch control**.
+2. Confirm the Cloudflare build's version command matches the one above. It lives in the dashboard, not in this repository. Changing it in the repo has no effect.
+3. Confirm the Worker name in `wrangler.jsonc` (`osm-ai-journey`) matches the Worker in Cloudflare. A mismatch uploads to a different Worker, and the alias will not resolve.
+4. After the build, the log prints `Version Preview Alias URL`. Check that the URL matches the table above.
+5. Check the alias serves the new build. The page should reference the `assets/index-<hash>.js` that the build log prints.
