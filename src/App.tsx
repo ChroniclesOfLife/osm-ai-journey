@@ -80,6 +80,7 @@ function App() {
   const [journeyTransferMessage, setJourneyTransferMessage] = useState('')
   const [journeyTransferError, setJourneyTransferError] = useState('')
   const [selectedPhoto, setSelectedPhoto] = useState<PlacePhoto | null>(null)
+  const [showCompanion, setShowCompanion] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -429,6 +430,11 @@ function App() {
 
       <section className="workspace">
         <section className="map-panel panel">
+          {selectedPhoto && <div className="scene-art" aria-label="Illustrative destination scene art">
+            <img src={selectedPhoto.imageUrl} alt="" />
+            <div className="scene-art-shade" />
+            <p className="scene-art-note">Illustrative photo · not a live view · <a href={selectedPhoto.sourceUrl} target="_blank" rel="noreferrer">source</a></p>
+          </div>}
           <div className="map-toolbar">
             <div>
               <p className="eyebrow">Explore a place</p>
@@ -529,8 +535,18 @@ function App() {
               <p className="eyebrow">Your companion</p>
               <h2>Begin anywhere</h2>
             </div>
-            <span className="scene-tag">Scene {String(currentScene).padStart(2, '0')}</span>
+            <div className="journey-heading-actions">
+              <button className={`companion-toggle ${showCompanion ? 'active' : ''}`} type="button" onClick={() => setShowCompanion((visible) => !visible)} aria-pressed={showCompanion}>
+                {showCompanion ? 'Hide companion' : 'Show companion'}
+              </button>
+              <span className="scene-tag">Scene {String(currentScene).padStart(2, '0')}</span>
+            </div>
           </div>
+          {showCompanion && <div className="companion-sprite" aria-label="Companion illustration placeholder">
+            <span aria-hidden="true">✦</span>
+            <p>Companion illustration</p>
+            <small>Placeholder · no portrait uploaded</small>
+          </div>}
           <div className="conversation" aria-label="Journey narration">
             {messages.map((item, index) => <div className={`message ${index % 2 ? 'user-action' : 'narration'}`} key={`${item}-${index}`}><p>{item}</p></div>)}
           </div>

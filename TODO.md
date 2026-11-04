@@ -114,10 +114,10 @@ without changing provider contracts or journey-state schemas.
 
 ### Phase 2: Scene art and character presence
 
-- [ ] Promote the selected illustrative destination photo to scene art
-- [ ] Add an explicit illustrative-photo / not-live-view marker
-- [ ] Add an off-by-default companion or NPC illustration toggle
-- [ ] Preserve photo source metadata and links
+- [x] Promote the selected illustrative destination photo to scene art
+- [x] Add an explicit illustrative-photo / not-live-view marker
+- [x] Add an off-by-default companion or NPC illustration toggle
+- [x] Preserve photo source metadata and links
 
 ### Phase 3: Story-mode navigation panels
 
