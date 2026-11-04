@@ -98,3 +98,41 @@ The phases below are ordered around a usable single-user MVP. Each phase should 
 - [x] Add provider failure and offline scenarios to the test matrix
 - [x] Reduce the initial bundle with code splitting where useful
 - [x] Review npm audit findings and dependency updates
+
+## Immersive redesign phases
+
+These phases execute the presentation direction in `IMMERSIVE_REDESIGN.md`
+without changing provider contracts or journey-state schemas.
+
+### Phase 1: Full-bleed stage and narration
+
+- [ ] Replace the dashboard split with a full-viewport map stage
+- [ ] Render companion output as flowing serif narration
+- [ ] Render user turns as quiet italic actions
+- [ ] Keep free-form composition available before and after destination selection
+- [ ] Preserve map controls, provenance, timeline, and local-first behavior
+
+### Phase 2: Scene art and character presence
+
+- [ ] Promote the selected illustrative destination photo to scene art
+- [ ] Add an explicit illustrative-photo / not-live-view marker
+- [ ] Add an off-by-default companion or NPC illustration toggle
+- [ ] Preserve photo source metadata and links
+
+### Phase 3: Story-mode navigation panels
+
+- [ ] Add a story-mode dock for Map and Destination panels
+- [ ] Wire panel navigation to existing place selection and transition flows
+- [ ] Add a destination image gallery that can change scene art
+
+### Phase 4: Field notes and travelogue
+
+- [ ] Move provenance-heavy destination facts into a field-notes drawer
+- [ ] Reframe the journey timeline as a travelogue spine
+- [ ] Keep source, cache, live, and user-created labels visible
+
+### Phase 5: Cinematic arrivals and mode toggle
+
+- [ ] Add arrival fade, vignette, and chapter-card transitions
+- [ ] Add an Explore/Story toggle
+- [ ] Keep free map panning and clicking available in Explore mode
