@@ -531,8 +531,8 @@ function App() {
             </div>
             <span className="scene-tag">Scene {String(currentScene).padStart(2, '0')}</span>
           </div>
-          <div className="conversation">
-            {messages.map((item, index) => <div className={`message ${index % 2 ? 'user-message' : 'ai-message'}`} key={`${item}-${index}`}><span className="message-label">{index % 2 ? 'You' : 'Guide'}</span><p>{item}</p></div>)}
+          <div className="conversation" aria-label="Journey narration">
+            {messages.map((item, index) => <div className={`message ${index % 2 ? 'user-action' : 'narration'}`} key={`${item}-${index}`}><p>{item}</p></div>)}
           </div>
           <section className="journey-timeline" aria-label="Journey timeline">
             <div className="timeline-heading"><p className="memory-label">Journey timeline</p><span>{narrativeEvents.length} event{narrativeEvents.length === 1 ? '' : 's'}</span></div>
