@@ -9,15 +9,15 @@ The repository contains the initial product documentation and a Vite/React scaff
 ## Quick start
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open the local URL printed by Vite. The production build is static:
 
 ```bash
-npm run build
-npm run preview
+pnpm build
+pnpm preview
 ```
 
 ## Product decisions
